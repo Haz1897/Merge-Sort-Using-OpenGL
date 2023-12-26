@@ -1,0 +1,397 @@
+#include<GL/glut.h>
+#include <stdio.h>
+struct Number{
+    int value;
+    int squareVertices [4][2];
+};
+struct Array{
+    int *values;
+    int length;
+    Array *left,*right;
+    Number *numbers;
+};
+Array subArray(Array arr,int start, int end) {
+    Array temp;
+    temp.values = new int[end - start];
+    temp.length = end - start;
+    for (int i = 0;i < temp.length;i++) {
+        /*printf("\nArr: %d", arr.values[i]);*/
+        temp.values[i] = arr.values[start+i];
+        /*printf("\nTemp: %d",temp.values[i]);*/
+    }
+    return temp;
+}
+Array Construct() {
+    Array temp;
+    temp.left = NULL;
+    temp.right = NULL;
+    temp.numbers = NULL;
+    return temp;
+}
+Array arrays[200];
+Array startingArray;
+int pointer = 0; //Used to store arrays in the jagged array "arrays".
+int next = 1;
+int size = 150; //Variable used to dynamically adjust cell size;
+
+
+bool isMoving = false;
+Array moving;
+int stepX, stepY,stepCount=5000;
+void Merge(Array arr, Array leftSubArray, Array rightSubArray) {
+    int i = 0, l = 0, r = 0; //Pointers used to traverse arr, leftSubArray and rightSubarray respectively;
+    while (l < leftSubArray.length && r < rightSubArray.length)
+    {
+        //Check if leftSubArray has a lower value.
+        if (leftSubArray.values[l] < rightSubArray.values[r])
+        {
+            arr.values[i] = leftSubArray.values[l];
+            i++;
+            l++;
+        }
+        //Else, rightSubArray has a lower value.
+        else
+        {
+            arr.values[i] = rightSubArray.values[r];
+            i++;
+            r++;
+        }
+    }
+    //Used to empty leftSubArray in case anything was left.
+    while (l < leftSubArray.length)
+    {
+        arr.values[i] = leftSubArray.values[l];
+        i++;
+        l++;
+    }
+    //Used to empty rightSubArray in case anything was left.
+    while (r < rightSubArray.length)
+    {
+        arr.values[i] = rightSubArray.values[r];
+        i++;
+        r++;
+    }
+}
+void MergeSort(Array arr) {
+    if (arr.length == 1) //Base case: check if length of array = 1;
+        return;
+    int mid = arr.length / 2;
+    Array leftSubArray =subArray(arr,0, mid); //Create left sub array starting from arr[0] and ending at index arr[mid];
+    /*printf("\nLeft sub array: ");
+    for (int i = 0;i < leftSubArray.length;i++) {
+        printf("%d ",leftSubArray.values[i]);
+    }*/
+    Array rightSubArray = subArray(arr,mid, arr.length);    //Create left sub array starting from arr[0] and ending at index arr[length - mid];
+    /*printf("\nRight sub array: ");
+    for (int i = 0;i < rightSubArray.length;i++) {
+        printf("%d ", rightSubArray.values[i]);
+    }
+    printf("\n");*/
+    MergeSort(leftSubArray);
+    MergeSort(rightSubArray);
+    Merge(arr, leftSubArray, rightSubArray);
+    //arr.left = &leftSubArray;
+    //arr.right = &rightSubArray;
+    //arrays[pointer++] = &arr;
+
+}
+
+void drawNumber(int number, int startX, int startY) {
+
+    //Calculate how much space each number must take in able to dynamically display numbers via a loop.
+    //1- get number of digits.
+    //2- get starting coordinate based on number of digits (starting from left)
+    //3- draw.
+
+    int remainder,temp=number,digits=0;
+    bool isNegative = false;
+
+    //Check if number is negative.
+    if (number < 0) {
+        number *= -1;
+        isNegative = true;
+    }
+    //Get number of digits;
+    do {
+        temp = (int)(temp / 10);
+        digits++;
+    } while (temp != 0);
+    if (isNegative)
+        digits++;
+
+    int numberPadding = size/20;  //Used to keep numbers apart;
+    int totalNumberSize = (size * 18) / 20;
+    int numberSize;
+    if (digits > 3)
+        numberSize = totalNumberSize / digits;
+    else
+        numberSize = (int)(size * 6 / 20); //Represents length/height of every number;
+    int numberX = (int)(startX + size - (size / 20)-(numberPadding/3)); //Starting X of each digit;
+    int numberY = (int)(startY - (size * 7 / 20)); //Starting Y of each digit;
+    
+    //If number is 1 digit, shift it to middle.
+    if (digits == 1)
+        numberX -= numberSize;
+    else if (digits == 2)
+        numberX -= numberSize / 2;
+    
+    do {
+        remainder = number % 10;
+        number = number / 10;
+        switch (remainder) {
+        case 0:
+            glBegin(GL_LINE_LOOP);
+            glVertex2f(numberX-numberSize+(numberPadding*1.3),numberY);
+            glVertex2f(numberX,numberY);
+            glVertex2f(numberX,numberY-numberSize);
+            glVertex2f(numberX-numberSize + (numberPadding * 1.3),numberY-numberSize);
+            glEnd();
+            break;
+        case 1:
+            glBegin(GL_LINES);
+            glVertex2f(numberX-(numberSize/2), numberY+(numberPadding/2));
+            glVertex2f(numberX - (numberSize / 2),numberY-numberSize-(numberPadding/2));
+            glEnd();
+            break;
+        case 2:
+            glBegin(GL_LINE_STRIP);
+            glVertex2f(numberX-numberSize + (numberPadding * 1.3),numberY);
+            glVertex2f(numberX,numberY);
+            glVertex2f(numberX,numberY - (numberSize / 2));
+            glVertex2f(numberX-numberSize + (numberPadding * 1.3),numberY-(numberSize/2));
+            glVertex2f(numberX-numberSize + (numberPadding * 1.3),numberY-numberSize);
+            glVertex2f(numberX,numberY-numberSize);
+            glEnd();
+            break;
+        case 3:
+            glBegin(GL_LINE_STRIP);
+            glVertex2f(numberX - numberSize +(numberPadding * 1.3), numberY);
+            glVertex2f(numberX, numberY);
+            glVertex2f(numberX, numberY - numberSize);
+            glVertex2f(numberX - numberSize + (numberPadding * 1.3), numberY - numberSize);
+            glEnd();
+            glBegin(GL_LINES);
+            glVertex2f(numberX,numberY-(numberSize/2));
+            glVertex2f(numberX-numberSize + (numberPadding * 1.3),numberY-(numberSize/2));
+            glEnd();
+            break;
+        case 4:
+            glBegin(GL_LINE_STRIP);
+            glVertex2f(numberX-numberSize+(numberPadding*1.3),numberY);
+            glVertex2f(numberX - numberSize + (numberPadding*1.3), numberY-(numberSize/2));
+            glVertex2f(numberX, numberY - (numberSize / 2));
+            glVertex2f(numberX,numberY);
+            glVertex2f(numberX,numberY-numberSize);
+            glEnd();
+            break;
+        case 5:
+            glBegin(GL_LINE_STRIP);
+            glVertex2f(numberX, numberY);
+            glVertex2f(numberX - numberSize + (numberPadding*1.3), numberY);
+            glVertex2f(numberX - numberSize + (numberPadding*1.3), numberY - (numberSize / 2));
+            glVertex2f(numberX, numberY - (numberSize / 2));
+            glVertex2f(numberX, numberY - numberSize);
+            glVertex2f(numberX - numberSize + (numberPadding*1.3), numberY - numberSize);
+            glEnd();
+            break;
+        case 6:
+            glBegin(GL_LINE_STRIP);
+            glVertex2f(numberX,numberY);
+            glVertex2f(numberX - numberSize + (numberPadding * 1.3), numberY);
+            glVertex2f(numberX - numberSize + (numberPadding * 1.3), numberY-numberSize);
+            glVertex2f(numberX , numberY-numberSize);
+            glVertex2f(numberX , numberY-(numberSize/2));
+            glVertex2f(numberX - numberSize + (numberPadding * 1.3), numberY - (numberSize / 2));
+            glEnd();
+            break;
+        case 7:
+            glBegin(GL_LINE_STRIP);
+            glVertex2f(numberX-numberSize+(numberPadding*1.3),numberY);
+            glVertex2f(numberX,numberY);
+            glVertex2f(numberX,numberY-numberSize - (numberPadding / 2));
+            glEnd();
+            break;
+        case 8:
+            glBegin(GL_LINE_LOOP);
+            glVertex2f(numberX - numberSize + (numberPadding * 1.3), numberY);
+            glVertex2f(numberX, numberY);
+            glVertex2f(numberX, numberY - numberSize);
+            glVertex2f(numberX - numberSize + (numberPadding * 1.3), numberY - numberSize);
+            glEnd();
+            glBegin(GL_LINES);
+            glVertex2f(numberX, numberY - (numberSize / 2));
+            glVertex2f(numberX - numberSize + (numberPadding * 1.3), numberY - (numberSize / 2));
+            glEnd();
+            break;
+        case 9:
+            glBegin(GL_LINE_LOOP);
+            glVertex2f(numberX,numberY-(numberSize/2));
+            glVertex2f(numberX-numberSize+(numberPadding*1.3), numberY - (numberSize / 2));
+            glVertex2f(numberX-numberSize+(numberPadding*1.3), numberY);
+            glVertex2f(numberX, numberY);
+            glVertex2f(numberX, numberY-numberSize - (numberPadding / 2));
+            glEnd();
+            break;
+        }
+        numberX -= numberSize;
+    } while (number != 0);
+    if (isNegative) {
+        glBegin(GL_LINES);
+        glVertex2f(numberX,numberY-(numberSize/2));
+        glVertex2f(numberX-numberSize+(numberPadding*1.3), numberY - (numberSize / 2));
+        glEnd();
+
+    }
+}
+
+void drawSquare(Array arr,int index) {
+    glLoadIdentity();
+    glOrtho(-1920, 1920, -1080, 1080,-100,100);
+    for (int i = 0;i < arr.length;i++) {
+        Number number = arr.numbers[i];
+        if (index == next - 1 && next != 1)
+            glColor3f(0.5,1,1);
+        else 
+            glColor3f(1, 1, 1);
+        glLineWidth(1);
+        glBegin(GL_QUADS);
+        for (int i = 0;i < 4;i++) {
+            glVertex2f(number.squareVertices[i][0], number.squareVertices[i][1]);
+        }
+        glEnd();
+        glColor3f(0, 0, 0);
+        glLineWidth(3);
+        glBegin(GL_LINE_LOOP);
+        for (int i = 0;i < 4;i++) {
+            glVertex2f(number.squareVertices[i][0], number.squareVertices[i][1]);
+        }
+        glEnd();
+        drawNumber(arr.values[i],number.squareVertices[0][0],number.squareVertices[0][1]);
+    }
+}
+void drawArray(Array arrays[]) {
+
+    for (int i = 0;i < next;i++) {
+        drawSquare(arrays[i],i);
+    }
+
+}
+void display() {
+    glClearColor(0.25, 0.25, 0.3, 0);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    //drawSquare(startingArray);
+    drawArray(arrays);
+    glFlush();
+}
+
+//This method is used to give vertices to the array
+void giveCoordinates(Array *arr,int startX,int startY) {
+    arr->numbers = new Number[arr->length];//Initialize numbers array which holds coordinates;
+   
+    Array *temp;
+    //First cell setup.
+    arr->numbers[0].squareVertices[0][0] = startX               ;arr->numbers[0].squareVertices[0][1] = startY;     //(x1,y1)
+    arr->numbers[0].squareVertices[1][0] = startX+size          ;arr->numbers[0].squareVertices[1][1] = startY;     //(x2,y2)
+    arr->numbers[0].squareVertices[2][0] = startX+size          ;arr->numbers[0].squareVertices[2][1] = startY-size;//(x3,y3)
+    arr->numbers[0].squareVertices[3][0] = startX               ;arr->numbers[0].squareVertices[3][1] = startY-size;//(x4,y4)
+   
+    //Set-up all remaining cells using the first as a reference;
+    for (int i = 1;i < arr->length;i++) {
+        arr->numbers[i].squareVertices[0][0] = arr->numbers[i-1].squareVertices[1][0]               ;arr->numbers[i].squareVertices[0][1] = arr->numbers[i - 1].squareVertices[1][1];//(x1,y1)
+        arr->numbers[i].squareVertices[1][0] = arr->numbers[i-1].squareVertices[1][0] + size        ;arr->numbers[i].squareVertices[1][1] = arr->numbers[i - 1].squareVertices[1][1];//(x2,y2)
+        arr->numbers[i].squareVertices[2][0] = arr->numbers[i-1].squareVertices[1][0] + size        ;arr->numbers[i].squareVertices[2][1] = arr->numbers[i - 1].squareVertices[2][1];//(x3,y3)
+        arr->numbers[i].squareVertices[3][0] = arr->numbers[i-1].squareVertices[1][0]               ;arr->numbers[i].squareVertices[3][1] = arr->numbers[i - 1].squareVertices[2][1];//(x4,y4)
+
+    }  
+    if(arr->left!=NULL)
+       giveCoordinates(arr->left,startX-(40*arr->length/2),startY-size-100);
+    if (arr->right != NULL)
+        giveCoordinates(arr->right, startX + (size*(arr->length/2))+ (40 * arr->length / 2), startY - size - 100);
+}
+//This method is used to construct a tree for the array used in merge sort;
+void fillArrayTree(Array *arr) {
+    if (!arr)
+        return;
+    if (arr->length == 1) 
+        return;
+    Array* temp;
+    printf("Array: ");
+    for (int i = 0;i < arr->length;i++) {
+        printf("%d ",arr->values[i]);
+    }
+    //Left
+    arr->left = new Array;
+    temp = arr->left;
+    *temp = Construct();
+    arr->left->length = arr->length / 2;
+    arr->left->values = new int[arr->left->length];
+    printf("\nArray in left: ");
+    for (int i = 0;i < arr->left->length;i++) {
+       
+        arr->left->values[i] = arr->values[i]; //Filling left array with the left half of the array;
+        printf("%d ", arr->left->values[i]);
+    }
+    //Right
+    arr->right = new Array;
+    temp = arr->right;
+    *temp = Construct();
+    arr->right->length = arr->length - (arr->length/2);
+    arr->right->values = new int[arr->right->length];
+    printf("\nArray in right: ");
+    for (int i = 0;i < arr->right->length;i++) {
+        arr->right->values[i] = arr->values[arr->left->length+i]; //Continue where left array left off by using its length;
+        printf("%d ", arr->right->values[i]);
+    }
+    printf("\n-------------------------------------------------------\n");
+    fillArrayTree(arr->left);
+    fillArrayTree(arr->right);
+}
+void mouse(int button, int state, int x, int y) {
+    if (button == GLUT_LEFT_BUTTON && state == GLUT_DOWN&&!isMoving) {
+            if (next < pointer)
+                next++;
+        }
+    glutPostRedisplay();
+}
+void keyboard(unsigned char key, int x, int y) {
+    if (key == 32)
+    {
+        if (next < pointer)
+            next++;
+    }
+
+    glutPostRedisplay();
+}
+
+void setupArrays(Array arr) {
+    arrays[pointer++] = arr;
+    if (arr.left)
+        setupArrays(*(arr.left));
+    if (arr.right)
+        setupArrays(*(arr.right));
+}
+int main(int argc, char** argv)
+{  
+    //Can only input numbers up to 999;
+    moving = Construct();
+    int n = 13;
+    startingArray = Construct();
+    startingArray.values = new int[n];
+    startingArray.length = n;
+    for (int i = 0;i < startingArray.length;i++) {
+        startingArray.values[i] = 100000 + i;
+    }
+    MergeSort(startingArray);
+    fillArrayTree(&startingArray);
+    giveCoordinates(&startingArray,-1000,900);
+    setupArrays(startingArray);
+    glutInit(&argc, argv);
+    glutInitDisplayMode(GLUT_SINGLE | GLUT_RGB);
+    glutInitWindowSize(1900,1000);
+    glutInitWindowPosition(0, 0);
+    glutCreateWindow("Merge Sort");
+    glutDisplayFunc(display);
+    glutMouseFunc(mouse);
+    glutKeyboardFunc(keyboard);
+    glutMainLoop();
+}

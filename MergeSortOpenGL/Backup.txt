@@ -1,0 +1,208 @@
+#include<GL/glut.h>
+#include<GL/GL.h>
+#include<GL/GLU.h>
+#include <stdio.h>
+struct Number{
+    int value;
+    int squareVertices [4][2];
+};
+struct Array{
+    int *values;
+    int length;
+    Array *left,*right;
+    Number *numbers;
+};
+Array subArray(Array arr,int start, int end) {
+    Array temp;
+    temp.values = new int[end - start];
+    temp.length = end - start;
+    for (int i = 0;i < temp.length;i++) {
+        /*printf("\nArr: %d", arr.values[i]);*/
+        temp.values[i] = arr.values[start+i];
+        /*printf("\nTemp: %d",temp.values[i]);*/
+    }
+    return temp;
+}
+
+Array arrays[200];
+Array startingArray;
+int pointer = 0; //Used to store arrays in the jagged array "arrays".
+void Merge(Array arr, Array leftSubArray, Array rightSubArray) {
+    int i = 0, l = 0, r = 0; //Pointers used to traverse arr, leftSubArray and rightSubarray respectively;
+    while (l < leftSubArray.length && r < rightSubArray.length)
+    {
+        //Check if leftSubArray has a lower value.
+        if (leftSubArray.values[l] < rightSubArray.values[r])
+        {
+            arr.values[i] = leftSubArray.values[l];
+            i++;
+            l++;
+        }
+        //Else, rightSubArray has a lower value.
+        else
+        {
+            arr.values[i] = rightSubArray.values[r];
+            i++;
+            r++;
+        }
+    }
+    //Used to empty leftSubArray in case anything was left.
+    while (l < leftSubArray.length)
+    {
+        arr.values[i] = leftSubArray.values[l];
+        i++;
+        l++;
+    }
+    //Used to empty rightSubArray in case anything was left.
+    while (r < rightSubArray.length)
+    {
+        arr.values[i] = rightSubArray.values[r];
+        i++;
+        r++;
+    }
+}
+void MergeSort(Array arr) {
+    if (arr.length == 1) //Base case: check if length of array = 1;
+        return;
+    int mid = arr.length / 2;
+    Array leftSubArray =subArray(arr,0, mid); //Create left sub array starting from arr[0] and ending at index arr[mid];
+    /*printf("\nLeft sub array: ");
+    for (int i = 0;i < leftSubArray.length;i++) {
+        printf("%d ",leftSubArray.values[i]);
+    }*/
+    Array rightSubArray = subArray(arr,mid, arr.length);    //Create left sub array starting from arr[0] and ending at index arr[length - mid];
+    /*printf("\nRight sub array: ");
+    for (int i = 0;i < rightSubArray.length;i++) {
+        printf("%d ", rightSubArray.values[i]);
+    }
+    printf("\n");*/
+    MergeSort(leftSubArray);
+    MergeSort(rightSubArray);
+    Merge(arr, leftSubArray, rightSubArray);
+    arr.left = &leftSubArray;
+    arr.right = &rightSubArray;
+    arrays[pointer++] = arr;
+
+}
+void drawNumber(int number, int startX, int startY) {
+
+    //Calculate how much space each number must take in able to dynamically display numbers via a loop.
+    //1- get number of digits.
+    //2- get starting coordinate based on number of digits (starting from left)
+    //3- draw.
+    switch (number) {
+    
+    }
+}
+void drawSquare(Array arr) {
+    glLoadIdentity();
+    glOrtho(-1920, 1920, -1080, 1080,-100,100);
+    for (int i = 0;i < arr.length;i++) {
+        Number number = arr.numbers[i];
+        glColor3f(1, 1, 1);
+        glLineWidth(1);
+        glBegin(GL_QUADS);
+        for (int i = 0;i < 4;i++) {
+            glVertex2f(number.squareVertices[i][0], number.squareVertices[i][1]);
+        }
+        glEnd();
+        glColor3f(0, 0, 0);
+        glLineWidth(3);
+        glBegin(GL_LINE_LOOP);
+        for (int i = 0;i < 4;i++) {
+            glVertex2f(number.squareVertices[i][0], number.squareVertices[i][1]);
+        }
+        glEnd();
+        drawNumber(arr.values[i],number.squareVertices[i][0],number.squareVertices[i][1]);
+    }
+}
+void display() {
+    glClearColor(0.25, 0.25, 0.3, 0);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    //glOrtho(-100, 100, -100, 100,-100,100);
+    drawSquare(startingArray);
+    glFlush();
+}
+void giveCoordinates(Array *arr,int startX,int startY) {
+    int size = 200; //Variable used to dynamically adjust cell size;
+    arr->numbers = new Number[arr->length];//Initialize numbers array which holds coordinates;
+
+    //First cell setup.
+    arr->numbers[0].squareVertices[0][0] = startX               ;arr->numbers[0].squareVertices[0][1] = startY;     //(x1,y1)
+    arr->numbers[0].squareVertices[1][0] = startX+size          ;arr->numbers[0].squareVertices[1][1] = startY;     //(x2,y2)
+    arr->numbers[0].squareVertices[2][0] = startX+size          ;arr->numbers[0].squareVertices[2][1] = startY-size;//(x3,y3)
+    arr->numbers[0].squareVertices[3][0] = startX               ;arr->numbers[0].squareVertices[3][1] = startY-size;//(x4,y4)
+
+    //Set-up all remaining cells using the first as a reference;
+    for (int i = 1;i < arr->length;i++) {
+        arr->numbers[i].squareVertices[0][0] = arr->numbers[i-1].squareVertices[1][0]               ;arr->numbers[i].squareVertices[0][1] = arr->numbers[i - 1].squareVertices[1][1];//(x1,y1)
+        arr->numbers[i].squareVertices[1][0] = arr->numbers[i-1].squareVertices[1][0] + size        ;arr->numbers[i].squareVertices[1][1] = arr->numbers[i - 1].squareVertices[1][1];//(x2,y2)
+        arr->numbers[i].squareVertices[2][0] = arr->numbers[i-1].squareVertices[1][0] + size        ;arr->numbers[i].squareVertices[2][1] = arr->numbers[i - 1].squareVertices[2][1];//(x3,y3)
+        arr->numbers[i].squareVertices[3][0] = arr->numbers[i-1].squareVertices[1][0]               ;arr->numbers[i].squareVertices[3][1] = arr->numbers[i - 1].squareVertices[2][1];//(x4,y4)
+    }  
+}
+//This method is used to construct a tree for the array used in merge sort;
+void fillArrayTree(Array *arr) {
+    if (arr->length == 1)
+        return;
+    //Left
+    arr->left = new Array();
+    arr->left->length = arr->length / 2;
+    arr->left->values = new int[arr->left->length];
+    for (int i = 0;i < arr->left->length;i++) {
+        printf("\nValue in left: %d", arr->values[i]);
+        arr->left->values[i] = arr->values[i]; //Filling left array with the left half of the array;
+    }
+    //Right
+    arr->right = new Array();
+    arr->right->length = arr->length - arr->left->length;
+    arr->right->values = new int[arr->right->length];
+    for (int i = 0;i < arr->right->length;i++) {
+        arr->right->values[i] = arr->values[arr->left->length+i]; //Continue where left array left off by using its length;
+    }
+    fillArrayTree(arr->left);
+    fillArrayTree(arr->right);
+}
+int main(int argc, char** argv)
+{
+    
+    startingArray.values = new int[10];
+    startingArray.length = 10;
+    for (int i = 0;i < 10;i++) {
+        startingArray.values[i] = 10 - i;
+    }
+    printf("Before: ");
+    for (int i = 0;i < startingArray.length;i++) {
+        printf("%d ", startingArray.values[i]);
+    }
+    printf("\n");
+    MergeSort(startingArray);
+    printf("After: ");
+    for (int i = 0;i < startingArray.length;i++) {
+        printf("%d ", startingArray.values[i]);
+    }
+    fillArrayTree(&startingArray);
+    printf("\nLeft Subarray: ");
+    for (int i = 0;i < startingArray.left->length;i++) {
+        printf("%d ", startingArray.left->values[i]);
+    }
+    printf("\nRight Subarray: ");
+    for (int i = 0;i < startingArray.right->length;i++) {
+        printf("%d ", startingArray.right->values[i]);
+    }printf("\nLeft Subarray: ");
+    for (int i = 0;i < startingArray.left->left->length;i++) {
+        printf("%d ", startingArray.left->left->values[i]);
+    }
+    printf("\nRight Subarray: ");
+    for (int i = 0;i < startingArray.left->right->length;i++) {
+        printf("%d ", startingArray.left->right->values[i]);
+    }
+    giveCoordinates(&startingArray,-1000,900);
+    glutInit(&argc, argv);
+    glutInitDisplayMode(GLUT_SINGLE | GLUT_RGB);
+    glutInitWindowSize(1900,1000);
+    glutInitWindowPosition(0, 0);
+    glutCreateWindow("Merge Sort");
+    glutDisplayFunc(display);
+    glutMainLoop();
+}
